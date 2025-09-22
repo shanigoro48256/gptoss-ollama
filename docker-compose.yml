@@ -1,0 +1,62 @@
+services:
+  ollama-runtime:
+    image: ollama/ollama:latest
+    container_name: ollama-runtime
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_HOST=0.0.0.0:11434
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  gptoss-ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gptoss-ollama
+    container_name: gptoss-ollama
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-ollama}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-http://ollama-runtime:11434/v1}
+      - PYTHONPATH=/app/gptoss-ollama/src
+    depends_on:
+      ollama-runtime:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app/gptoss-ollama
+    working_dir: /app/gptoss-ollama
+    entrypoint: []
+    command:
+      - bash
+      - -lc
+      - |
+        set -e
+        mkdir -p src
+        [ -f src/__init__.py ] || : > src/__init__.py
+        ln -snf /app/venv .venv || true
+        python -m ipykernel install --user --name gptoss-venv --display-name "Python (.venv)" >/dev/null 2>&1 || true
+        exec /app/venv/bin/jupyter lab \
+          --ServerApp.ip=0.0.0.0 \
+          --ServerApp.port=8888 \
+          --ServerApp.root_dir=/app/gptoss-ollama \
+          --ServerApp.token="" \
+          --ServerApp.password="" \
+          --allow-root
+
+volumes:
+  ollama:
+
