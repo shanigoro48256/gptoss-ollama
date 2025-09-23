@@ -39,14 +39,15 @@ GITHUB_TOKEN=＜Githubキー＞               # Github検索
 ```bash
 # コンテナ起動
 docker compose up -d
-
-# コンテナへ入る
-docker exec -it gptoss-ollama /bin/bash
 ```
 
 ---
 
 ## パッケージインストール
+```bash
+# コンテナへ入る
+docker exec -it gptoss-ollama /bin/bash
+```
 
 ```bash
 uv pip install -e .
